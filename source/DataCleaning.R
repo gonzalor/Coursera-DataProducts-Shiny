@@ -5,6 +5,7 @@ summary(allissues$TotalTime)
 
 allissues$ResolutionDays = round(allissues$TotalTime  / 24 / 60,2)
 
+allissues$DepNombre = trimws(as.character(allissues$DepNombre))
 
 # Filter and prepare data
 cleantable <- allissues %>% filter(IssueYear==2014 & DepId %in% c(1,2,3,4,5,8) & MorNombre != 'Terceros' & ResolutionDays < 10) %>% 

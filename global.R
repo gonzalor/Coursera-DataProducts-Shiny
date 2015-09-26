@@ -1,28 +1,24 @@
+# Global Code
+
 library(dplyr)
 
-allissues <- readRDS("data/Issues.rds")
+# Read Issues Data
+issues <- readRDS("data/CleanIssues.RDS")
 
-cleantable <- allissues
+# Monthly Issues By Type
+issuesByType <- issues %>% group_by(Type, Month) %>% summarise(Count = n(), Resolution = mean(ResolutionDays))
+
+# Monthly Issues By Zone
+issuesByZone <- issues %>% group_by(Zone, Month) %>% summarise(Count = n(), Resolution = mean(ResolutionDays))
+
+# Zones Vector
+zones <- as.character(unique(issues$Zone))
+
+# Types Vector
+types <- as.character(unique(issues$Type))
+
+# Train Predictor usin linear regression
+fit <- lm(ResolutionDays ~ Type + Zone, data=issues)
 
 
 
-# allzips$latitude <- jitter(allzips$latitude)
-# allzips$longitude <- jitter(allzips$longitude)
-# allzips$college <- allzips$college * 100
-# allzips$zipcode <- formatC(allzips$zipcode, width=5, format="d", flag="0")
-# row.names(allzips) <- allzips$zipcode
-# 
-# cleantable <- allzips %>%
-#   select(
-#     City = city.x,
-#     State = state.x,
-#     Zipcode = zipcode,
-#     Rank = rank,
-#     Score = centile,
-#     Superzip = superzip,
-#     Population = adultpop,
-#     College = college,
-#     Income = income,
-#     Lat = latitude,
-#     Long = longitude
-#   )

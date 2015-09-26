@@ -1,41 +1,87 @@
-
-# This is the server logic for a Shiny web application.
-# You can find out more about building applications with Shiny here:
-# 
-# http://www.rstudio.com/shiny/
-#
+# Server logic of the Shiny Application
 
 library(shiny)
+library(leaflet)
+library(DT)
 
 shinyServer(function(input, output) {
-   
-  output$distPlot <- renderPlot({
-    
-    # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2] 
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    # draw the histogram with the specified number of bins
-    hist(x, breaks = bins, col = 'darkgray', border = 'white')
+    output$issuesByType <- renderPlot({
 
-  })
+        # Filter Data
+        filtered <- issues %>%
+          filter(
+            is.null(input$zones) | Zone %in% input$zones,
+            is.null(input$types) | Type %in% input$types
+        )
+    
+        # Sumarizes Data
+        if (input$xaxis=="types") {
+            d <- filtered %>% group_by(Type, Month) %>% summarise(Count = n(), Resolution = mean(ResolutionDays))
+            ylabel <- xlab("Issue Type")
+        } 
+        else {
+            d <- filtered %>% group_by(Zone, Month) %>% summarise(Count = n(), Resolution = mean(ResolutionDays))
+            ylabel <- xlab("Zone")
+        }
+    
+        # Normalize X Name
+        names(d)[1] = "x"
+    
+        # Boxplot of Issues By Type
+        if(input$yaxis == "count") {
+            d$y <- d$Count
+            xlabel <- ylab("Monthly Count")
+        } 
+        else 
+        {
+            d$y <- d$Resolution
+            xlabel <- ylab("Resolution Time [Days]")
+        }
   
-  output$ziptable <- DT::renderDataTable({
+        g <- ggplot(d, aes(x=x, y=y, fill = x)) 
+        g <- g + ggtitle("Service Issues Year 2014") + geom_boxplot() 
+        g <- g + guides(fill=FALSE) + xlabel + ylabel
+    
+        # Logarithmic Scale
+        if (input$chkByTypeLogScale) {
+            g <- g + scale_y_log10()
+        }
+        
+        # Render Graphics
+        g
+    })
 
-    df <- cleantable
     
-#     df <- cleantable %>%
-#       filter(
-#         Score >= input$minScore,
-#         Score <= input$maxScore,
-#         is.null(input$states) | State %in% input$states,
-#         is.null(input$cities) | City %in% input$cities,
-#         is.null(input$zipcodes) | Zipcode %in% input$zipcodes
-#       ) %>%
-#       mutate(Action = paste('<a class="go-map" href="" data-lat="', Lat, '" data-long="', Long, '" data-zip="', Zipcode, '"><i class="fa fa-crosshairs"></i></a>', sep=""))
-#     action <- DT::dataTableAjax(session, df)
+    # Prediction
+    output$prediction <- renderText({
+        
+        if (input$predZone=="" || input$predType==""){
+            return ("Select Type and Zone to Predict")
+        } else {
+        
+            # Create prediction
+            pred <- predict(fit, newdata = data.frame(Type=c(input$predType), Zone=c(input$predZone)))
+
+            # Output Prediction
+            sprintf("Resolution time predicted for type %s in zone %s is of %s days", input$predType, input$predZone, round(pred[1],1))
+        }
+    })
     
-    DT::datatable(df, escape = FALSE)
-  })
-  
+    # Data Table
+    output$table <- DT::renderDataTable({
+        df <- issues %>%
+            filter(
+                ResolutionDays >= input$tblMinDays,
+                ResolutionDays <= input$tblMaxDays,
+                is.null(input$tblzones) | Zone %in% input$tblzones,
+                is.null(input$tbltypes) | Type %in% input$tbltypes
+            )
+        DT::datatable(df, escape = FALSE)
+    })
+    
+    # Data Summary
+    output$datasummary <- renderPrint({
+        str(issues)
+    })
+    
 })
